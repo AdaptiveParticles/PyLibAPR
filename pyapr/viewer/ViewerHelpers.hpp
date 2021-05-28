@@ -7,14 +7,13 @@
 #include "data_containers/PyAPR.hpp"
 #include "numerics/APRReconstruction.hpp"
 #include "numerics/APRCompress.hpp"
-#include "numerics/APRRaycaster.hpp"
 #include "numerics/APRTreeNumerics.hpp"
 
 namespace py = pybind11;
 
- int min_occupied_level(PyAPR &aPyAPR){
+ int min_occupied_level(APR& apr){
 
-    auto apr_it = aPyAPR.apr.iterator();
+    auto apr_it = apr.iterator();
 
     for(int i = apr_it.level_min(); i <= apr_it.level_max(); i++){
         if(apr_it.particles_level_end(i) > 0){
@@ -34,9 +33,9 @@ namespace py = pybind11;
  * @type       std::string Type of downsampling
  */
 template<typename T, typename S>
-void get_down_sample_parts(PyAPR &aPyAPR, PyParticleData<T> &particles,PyParticleData<S> &tree_particles){
+void get_down_sample_parts(APR& apr, PyParticleData<T>& particles, PyParticleData<S>& tree_particles){
 
-   APRTreeNumerics::fill_tree_max(aPyAPR.apr, particles.parts,tree_particles.parts);
+   APRTreeNumerics::fill_tree_max(apr, particles, tree_particles);
 
 }
 
@@ -50,7 +49,7 @@ void get_down_sample_parts(PyAPR &aPyAPR, PyParticleData<T> &particles,PyParticl
  * @level              the level of particles to be added.
  */
 template<typename T>
-void fill_slice(PyAPR &aPyAPR, PyParticleData<T> &particles, py::array_t<T> &input, int z, int level) {
+void fill_slice(APR& apr, PyParticleData<T>& particles, py::array_t<T>& input, int z, int level) {
 
         uint16_t min_val = std::numeric_limits<T>::min();
 
@@ -62,9 +61,9 @@ void fill_slice(PyAPR &aPyAPR, PyParticleData<T> &particles, py::array_t<T> &inp
 
         input_img.init_from_mesh(buf.shape[1], buf.shape[0], 1, ptr); // may lead to memory issues
 
-        auto apr_it = aPyAPR.apr.iterator();
+        auto apr_it = apr.iterator();
 
-        std::fill(input_img.mesh.begin(),input_img.mesh.end(),min_val);
+        std::fill(input_img.mesh.begin(), input_img.mesh.end(), min_val);
 
         int x;
 
@@ -74,7 +73,7 @@ void fill_slice(PyAPR &aPyAPR, PyParticleData<T> &particles, py::array_t<T> &inp
     for(x = 0; x < apr_it.x_num(level); ++x){
         for(apr_it.begin(level,z,x); apr_it < apr_it.end(); apr_it++){
 
-            input_img.at(apr_it.y(), x, 0) = particles.parts[apr_it];
+            input_img.at(apr_it.y(), x, 0) = particles[apr_it];
 
         }
     }
@@ -91,7 +90,7 @@ void fill_slice(PyAPR &aPyAPR, PyParticleData<T> &particles, py::array_t<T> &inp
  * @level              the level of particles to be added.
  */
 template<typename T>
-void fill_slice_level(PyAPR &aPyAPR, PyParticleData<T> &particles, py::array_t<T> &input, int z, int level) {
+void fill_slice_level(APR& apr, PyParticleData<T>& particles, py::array_t<T>& input, int z, int level) {
 
         uint16_t min_val = std::numeric_limits<T>::min();
 
@@ -103,9 +102,9 @@ void fill_slice_level(PyAPR &aPyAPR, PyParticleData<T> &particles, py::array_t<T
 
         input_img.init_from_mesh(buf.shape[1], buf.shape[0], 1, ptr); // may lead to memory issues
 
-        auto apr_it = aPyAPR.apr.iterator();
+        auto apr_it = apr.iterator();
 
-        std::fill(input_img.mesh.begin(),input_img.mesh.end(),min_val);
+        std::fill(input_img.mesh.begin(), input_img.mesh.end(), min_val);
 
         int x;
 
@@ -130,7 +129,7 @@ void fill_slice_level(PyAPR &aPyAPR, PyParticleData<T> &particles, py::array_t<T
  * @z                  slice of image at levels resolution
  * @level              the level of particles to be added.
  */
-void compress_and_fill_slice(PyAPR &aPyAPR, PyParticleData<uint16_t> &particles,py::array &input,int z,int level) {
+void compress_and_fill_slice(APR& apr, PyParticleData<uint16_t>& particles, py::array_t<uint16_t>& input, int z, int level) {
 
         uint16_t min_val = std::numeric_limits<uint16_t>::min();
 
@@ -142,11 +141,11 @@ void compress_and_fill_slice(PyAPR &aPyAPR, PyParticleData<uint16_t> &particles,
 
         input_img.init_from_mesh(buf.shape[1], buf.shape[0], 1, ptr); // may lead to memory issues
 
-        auto apr_it = aPyAPR.apr.iterator();
+        auto apr_it = apr.iterator();
 
-        std::fill(input_img.mesh.begin(),input_img.mesh.end(),min_val);
+        std::fill(input_img.mesh.begin(), input_img.mesh.end(), min_val);
 
-        auto cr =  particles.parts.compressor;
+        auto cr =  particles.compressor;
 
         int x;
 
@@ -154,9 +153,9 @@ void compress_and_fill_slice(PyAPR &aPyAPR, PyParticleData<uint16_t> &particles,
 #pragma omp parallel for schedule(dynamic) private(x) firstprivate(apr_it)
 #endif
     for(x = 0;x < apr_it.x_num(level);++x){
-        for(apr_it.begin(level,z,x);apr_it < apr_it.end();apr_it++){
+        for(apr_it.begin(level,z,x); apr_it < apr_it.end(); apr_it++){
 
-            uint16_t particle = particles.parts[apr_it];
+            uint16_t particle = particles[apr_it];
             //lossy encode particle
             if(cr.get_quantization_factor() > 0){
 
@@ -174,9 +173,9 @@ void compress_and_fill_slice(PyAPR &aPyAPR, PyParticleData<uint16_t> &particles,
 
 
 template<typename T>
-PyPixelData<float> get_points(PyAPR &aPyAPR, PyParticleData<T> &particles, int z) {
+PixelData<float> get_points(APR& apr, PyParticleData<T>& particles, int z) {
 
-    auto apr_it = aPyAPR.apr.iterator();
+    auto apr_it = apr.iterator();
     int num_parts_in_slice = 0;
 
     for(int level = apr_it.level_max(); level > apr_it.level_min(); --level) {
@@ -204,7 +203,7 @@ PyPixelData<float> get_points(PyAPR &aPyAPR, PyParticleData<T> &particles, int z
             }
         }
     }
-    return PyPixelData<float>(arr);
+    return arr;
 }
 
 

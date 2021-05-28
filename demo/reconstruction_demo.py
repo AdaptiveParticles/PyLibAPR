@@ -1,15 +1,15 @@
 import pyapr
-import numpy as np
 from skimage import io as skio
+from pyapr.numerics.reconstruction import reconstruct_constant, reconstruct_smooth, reconstruct_level
 
 
 def main():
     """
     This demo illustrates three different pixel image reconstruction methods:
 
-        piecewise constant      each pixel takes the value of the particle whose cell contains the pixel
-        smooth                  additionally smooths regions of coarser resolution to reduce 'blockiness'
-        level                   each pixel takes the value of the resolution level of the particle cell it belongs to
+        constant      each pixel takes the value of the particle whose cell contains the pixel
+        smooth        additionally smooths regions of coarser resolution to reduce 'blockiness'
+        level         each pixel takes the value of the resolution level of the particle cell it belongs to
     """
 
     # get input APR file path from gui
@@ -24,13 +24,13 @@ def main():
     pyapr.io.read(fpath_apr, apr, parts)
 
     # Compute piecewise constant reconstruction
-    pc_recon = np.array(pyapr.numerics.reconstruction.recon_pc(apr, parts), copy=False)
+    pc_recon = reconstruct_constant(apr, parts)
 
     # Compute smooth reconstruction
-    smooth_recon = np.array(pyapr.numerics.reconstruction.recon_smooth(apr, parts), copy=False)
+    smooth_recon = reconstruct_smooth(apr, parts)
 
     # Compute level reconstruction
-    level_recon = np.array(pyapr.numerics.reconstruction.recon_level(apr), copy=False)
+    level_recon = reconstruct_level(apr)
 
     # Save the results
     file_name = fpath_apr.split('/')[-1]

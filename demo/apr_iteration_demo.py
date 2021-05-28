@@ -24,11 +24,10 @@ def main():
 
     # Illustrates the usage of the Python-wrapped linear iterator by computing the piecewise constant reconstruction
     start = time()
-    org_dims = apr.org_dims()  # dimension order (y, x, z)
-    py_recon = np.empty((org_dims[2], org_dims[1], org_dims[0]), dtype=np.uint16)
+    py_recon = np.empty((apr.org_dims(2), apr.org_dims(1), apr.org_dims(0)), dtype=np.uint16)
     max_level = apr.level_max()
 
-    apr_it = apr.iterator()  # PyLinearIterator
+    apr_it = apr.iterator()  # LinearIterator
 
     # particles at the maximum level coincide with pixels
     level = max_level
@@ -62,16 +61,15 @@ def main():
 
     # Compare to the c++ reconstruction
     start = time()
-    tmp = pyapr.numerics.reconstruction.recon_pc(apr, parts)
-    cpp_recon = np.array(tmp, copy=False)
+    cpp_recon = pyapr.numerics.reconstruction.reconstruct_constant(apr, parts)
     cpp_time = time()-start
     print('c++ reconstruction took {} seconds'.format(cpp_time))
     print('c++ was {} times faster'.format(py_time / cpp_time))
 
     # check that both methods produce the same results (on a subset of the image if it is larger than 128^3 pixels)
-    zm = min(org_dims[2], 128)
-    xm = min(org_dims[1], 128)
-    ym = min(org_dims[0], 128)
+    zm = min(apr.org_dims(2), 128)
+    xm = min(apr.org_dims(1), 128)
+    ym = min(apr.org_dims(0), 128)
 
     success = np.allclose(py_recon[:zm, :xm, :ym], cpp_recon[:zm, :xm, :ym])
     if not success:

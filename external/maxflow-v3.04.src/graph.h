@@ -136,8 +136,6 @@ public:
 	// to both the source and the sink, then default_segm is returned.
 	termtype what_segment(node_id i, termtype default_segm = SOURCE);
 
-
-
 	//////////////////////////////////////////////
 	//       ADVANCED INTERFACE FUNCTIONS       //
 	//      (provide access to the graph)       //

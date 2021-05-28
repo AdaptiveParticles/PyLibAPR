@@ -29,7 +29,7 @@ def main():
     par.sigma_th = 20
     par.sigma_th_max = 10
     converter.set_parameters(par)
-    converter.set_verbose(False)
+    converter.verbose = False
 
     # Compute APR and sample particle values
     converter.get_apr(apr, img)

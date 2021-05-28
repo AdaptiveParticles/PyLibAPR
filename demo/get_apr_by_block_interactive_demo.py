@@ -54,11 +54,11 @@ def main():
     # Initialize the by-block converter
     converter = pyapr.converter.ShortConverterBatch()
     converter.set_parameters(par)
-    converter.set_verbose(True)
+    converter.verbose = True
 
     # Parameters controlling the memory usage
-    converter.set_block_size(256)   # number of z-slices to process in each block during APR conversion
-    converter.set_ghost_size(32)    # number of ghost slices to use on each side of the blocks
+    converter.z_block_size = 256    # number of z-slices to process in each block during APR conversion
+    converter.z_ghost_size = 32     # number of ghost slices to use on each side of the blocks
     block_size_sampling = 256       # block size for sampling of particle intensities
     ghost_size_sampling = 128       # ghost size for sampling of particle intensities
 

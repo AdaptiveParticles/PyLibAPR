@@ -8,6 +8,10 @@
 
 #include "numerics/APRRaycaster.hpp"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 namespace py = pybind11;
 
 /**
@@ -31,6 +35,8 @@ public:
         rp.level_delta = 0;
     }
 
+    void set_verbose(bool verboseMode) { apr_raycaster.verbose = verboseMode; }
+
     void set_angle(float angle){
         current_angle = angle;
     }
@@ -52,25 +58,25 @@ public:
         //float curr_x =
 
         float new_angle = apr_raycaster.phi_s + angle;
-        if(new_angle > 3.14/2){
-            float diff = new_angle - 3.14/2;
-            diff = std::min(diff,3.13f);
-            apr_raycaster.phi_s = -3.14/2 + diff;
+        if(new_angle > M_PI/2){
+            double diff = new_angle - M_PI/2;
+            diff = std::min(diff, M_PI);
+            apr_raycaster.phi_s = -M_PI/2 + diff;
             apr_raycaster.phi += angle;
             //current_angle += 3.14;
-        } else if (new_angle < -3.14/2){
+        } else if (new_angle < -M_PI/2){
 
-            float diff =   - new_angle - 3.14/2;
-            diff = std::min(diff,3.14f);
+            double diff = -new_angle - M_PI/2;
+            diff = std::min(diff, M_PI);
 
-            apr_raycaster.phi = 3.14/2 - diff;
+            apr_raycaster.phi = M_PI/2 - diff;
 
-            apr_raycaster.phi_s =  3.14/2 - diff;
+            apr_raycaster.phi_s =  M_PI/2 - diff;
             apr_raycaster.phi += angle;
 
             //current_angle += 3.14;
         } else {
-             apr_raycaster.phi_s +=  angle;
+            apr_raycaster.phi_s +=  angle;
             apr_raycaster.phi += angle;
         }
 
@@ -94,7 +100,7 @@ public:
     }
 
 
-    void get_view(PyAPR &aPyAPR, PyParticleData<uint16_t> &particles,PyParticleData<float> &particles_tree,py::array &input) {
+    void get_view(APR& apr, PyParticleData<uint16_t>& particles, PyParticleData<float>& particles_tree, py::array_t<uint16_t>& input) {
 
         py::gil_scoped_acquire acquire;
 
@@ -115,7 +121,7 @@ public:
 
         apr_raycaster.scale_down = pow(2,rp.level_delta);
 
-        apr_raycaster.perform_raycast_patch(aPyAPR.apr,particles.parts,particles_tree.parts,input_img,rp,[] (const uint16_t& a,const uint16_t& b) {return std::max(a,b);});
+        apr_raycaster.perform_raycast_patch(apr,particles,particles_tree,input_img,rp,[] (const uint16_t& a,const uint16_t& b) {return std::max(a,b);});
 
         py::gil_scoped_release release;
 
@@ -129,6 +135,7 @@ void AddPyAPRRaycaster(pybind11::module &m,  const std::string &modulename) {
 
      py::class_<PyAPRRaycaster>(m, modulename.c_str())
         .def(py::init())
+        .def("set_verbose", &PyAPRRaycaster::set_verbose, "set verbose mode for projection timer")
         .def("set_angle",&PyAPRRaycaster::set_angle, "demo")
         .def("set_level_delta",&PyAPRRaycaster::set_level_delta, "demo")
         .def("set_z_anisotropy",&PyAPRRaycaster::set_z_anisotropy, "demo")

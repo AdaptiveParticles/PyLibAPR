@@ -1,0 +1,74 @@
+env:
+  global:
+  - CIBW_BUILD="cp36-* cp37-* cp38-* cp39-*"
+  - CIBW_BEFORE_BUILD_LINUX="apt update && apt install -y libtiff5-dev libhdf5-dev"
+  - CIBW_ARCHS="auto64"
+  - CIBW_MANYLINUX_X86_64_IMAGE="manylinux_2_24"
+  - TWINE_USERNAME=__token__
+  - CIBW_BUILD_VERBOSITY=3
+  - CIBW_REPAIR_WHEEL_COMMAND_MACOS="pip uninstall -y delocate && pip install git+https://github.com/Chia-Network/delocate.git && delocate-listdeps {wheel} && delocate-wheel -w {dest_dir} -v {wheel}"
+  - CIBW_BEFORE_TEST="pip install -r requirements.txt"
+  - CIBW_TEST_COMMAND="python3 -m unittest"
+
+matrix:
+  include:
+  - language: python
+    os: linux
+    sudo: required
+    python: '3.7'
+    services:
+    - docker
+    install:
+      - python3 -m pip install cibuildwheel==1.10.0
+    script:
+      - python3 -m cibuildwheel --output-dir wheelhouse
+    after_success:
+      - python3 -m pip install twine
+      - python3 -m twine upload --skip-existing --repository testpypi wheelhouse/*.whl
+
+  - os: osx
+    osx_image: xcode11.4
+    language: cpp
+    addons:
+      homebrew:
+        packages:
+        - c-blosc
+        - cmake
+        - llvm
+        - libomp
+    install:
+      - brew upgrade cmake
+      - python3 -m pip install cibuildwheel==1.10.0
+    script:
+      - python3 -m cibuildwheel --output-dir wheelhouse
+    after_success:
+      - python3 -m pip install twine
+      - python3 -m twine upload --skip-existing --repository testpypi wheelhouse/*.whl
+
+  - os: windows
+    language: bash
+    cache:
+      directories:
+        - $HOME/AppData/Local/Temp/chocolatey
+        - $HOME/AppData/Local/vcpkg/archives
+        #- /C/ProgramData/chocolatey/bin
+        #- /C/ProgramData/chocolatey/lib
+    before_install:
+      - export VCPKG_FEATURE_FLAGS="binarycaching"
+      - export EXTRA_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=/c/Users/travis/build/AdaptiveParticles/PyLibAPR/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    install:
+      - choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' #need cmake > 3.18
+      - travis_wait 10 choco install visualstudio2019buildtools --params "--add Microsoft.Component.MSBuild --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --add Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Llvm.Clang --add Microsoft.VisualStudio.Component.Windows10SDK.19041	--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.ComponentGroup.UWP.VC.BuildTools"
+      - travis_wait 20 sh travis_windows_setup.sh
+      - choco install python3 -y --version 3.8.6
+      - export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
+      - ln -s /c/Python38/python.exe /c/Python38/python3.exe
+      - python3 -m pip install cibuildwheel==1.10.0
+    script:
+      - python3 -m cibuildwheel --output-dir dist
+    after_success:
+      - py -m pip install wheel
+      - py -m pip install delvewheel
+      - py fix_windows_wheel.py
+      - py -m pip install twine
+      - py -m twine upload --skip-existing --repository testpypi dist/wheelhouse/*.whl

@@ -13,62 +13,24 @@
 
 namespace py = pybind11;
 
-// -------- Utility classes to be wrapped in python ----------------------------
-/**
- * Currently only using this class to return PixelData objects to python as arrays without copy. It could be made more
- * complete with constructor methods and other functionality, but I don't think it is necessary.
- *
- * @tparam T type of mesh elements
- */
-template<typename T>
-class PyPixelData {
 
-    PixelData<T> image;
-
-public:
-    PyPixelData() {}
-
-    PyPixelData(PixelData<T> &aInput) {
-        image.swap(aInput);
-    }
-
-    /**
-     * @return pointer to the mesh data
-     */
-    T *data() {return image.mesh.get();}
-
-    /**
-     * @return width of the domain (number of columns)
-     */
-    int width() const {return image.x_num;}
-
-    /**
-     * @return height of the domain (number of rows)
-     */
-    int height() const {return image.y_num;}
-
-    /**
-     * @return depth of the domain
-     */
-    int depth() const {return image.z_num;}
-};
+// Currently only using this to return PixelData objects to python as arrays without copy. It could be made more
+// complete with constructors and methods, but I don't think it is necessary.
 
 template<typename DataType>
 void AddPyPixelData(pybind11::module &m, const std::string &aTypeString) {
-    using PixelDataType = PyPixelData<DataType>;
+    using PixelDataType = PixelData<DataType>;
     std::string typeStr = "PixelData" + aTypeString;
     py::class_<PixelDataType>(m, typeStr.c_str(), py::buffer_protocol())
-            .def("width", &PixelDataType::width, "Returns number of columns (x)")
-            .def("height", &PixelDataType::height, "Returns number of rows (y)")
-            .def("depth", &PixelDataType::depth, "Returns the depth (z)")
+            .def(py::init())
             .def_buffer([](PixelDataType &a) -> py::buffer_info{
                 return py::buffer_info(
-                        a.data(),
+                        a.mesh.get(),
                         sizeof(DataType),
                         py::format_descriptor<DataType>::format(),
                         3,
-                        {a.depth(), a.width(), a.height()},
-                        {sizeof(DataType) * a.height() * a.width(), sizeof(DataType) * a.height(), sizeof(DataType)}
+                        {a.z_num, a.x_num, a.y_num},
+                        {sizeof(DataType) * a.x_num * a.y_num, sizeof(DataType) * a.y_num, sizeof(DataType)}
                 );
             });
 }

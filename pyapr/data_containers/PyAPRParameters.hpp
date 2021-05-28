@@ -1,7 +1,7 @@
 #ifndef PYLIBAPR_PYAPRPARAMETERS_HPP
 #define PYLIBAPR_PYAPRPARAMETERS_HPP
 
-#include "algorithm/APRParameters.hpp"
+#include <algorithm/APRParameters.hpp>
 
 void AddPyAPRParameters(pybind11::module &m) {
     py::class_<APRParameters>(m, "APRParameters")

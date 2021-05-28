@@ -36,7 +36,7 @@ def get_apr(image, rel_error=0.1, gradient_smoothing=2, verbose=True, params=Non
         raise TypeError(errstr)
 
     converter.set_parameters(par)
-    converter.set_verbose(verbose)
+    converter.verbose = verbose
 
     # Compute the APR and sample particles
     converter.get_apr(apr, image)
@@ -83,7 +83,7 @@ def get_apr_interactive(image, rel_error=0.1, gradient_smoothing=2, verbose=True
         raise TypeError(errstr)
 
     converter.set_parameters(par)
-    converter.set_verbose(verbose)
+    converter.verbose = verbose
 
     # launch interactive APR converter
     io_int.interactive_apr(converter, apr, image, slider_decimals=slider_decimals)
@@ -134,7 +134,7 @@ def find_parameters_interactive(image, rel_error=0.1, gradient_smoothing=0, verb
         raise TypeError(errstr)
 
     converter.set_parameters(par)
-    converter.set_verbose(verbose)
+    converter.verbose = verbose
 
     # launch interactive APR converter
     par = io_int.find_parameters_interactive(converter, apr, image, slider_decimals=slider_decimals)

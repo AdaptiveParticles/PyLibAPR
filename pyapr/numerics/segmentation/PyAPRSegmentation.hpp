@@ -20,29 +20,29 @@
 namespace py = pybind11;
 
 
-void get_terminal_energies(PyAPR& apr, PyParticleData<uint16_t>& input_parts, PyParticleData<float>& s, PyParticleData<float>& t,
+void get_terminal_energies(APR& apr, PyParticleData<uint16_t>& input_parts, PyParticleData<float>& s, PyParticleData<float>& t,
                            float alpha, int num_tree_smooth = 1, int num_part_smooth = 1, int push_depth = 0, float intensity_threshold=0.0f,
                            float min_var = 0.0f, int std_window_size=7, float max_factor=3.0, int num_levels=3) {
 
-    s.parts.init(apr.total_number_particles());
-    t.parts.init(apr.total_number_particles());
+    s.init(apr.total_number_particles());
+    t.init(apr.total_number_particles());
 
     APRTimer timer(true);
 
     timer.start_timer("compute adaptive min");
     ParticleData<float> loc_min;
-    APRNumerics::adaptive_min(apr.apr, input_parts.parts, loc_min, num_tree_smooth, push_depth, num_part_smooth);
+    APRNumerics::adaptive_min(apr, input_parts, loc_min, num_tree_smooth, push_depth, num_part_smooth);
     timer.stop_timer();
 
     timer.start_timer("compute local scale");
     ParticleData<float> local_scale;
     std::vector<int> size = {std_window_size, std_window_size, std_window_size};
-    APRNumerics::local_std(apr.apr, input_parts.parts, local_scale, size);
+    APRNumerics::local_std(apr, input_parts, local_scale, size);
     timer.stop_timer();
 
     // Loop over particles and edd edges
-    auto it = apr.apr.random_iterator();
-    auto neighbour_iterator = apr.apr.random_iterator();
+    auto it = apr.random_iterator();
+    auto neighbour_iterator = apr.random_iterator();
 
     const int level_start = std::min(std::max(apr.level_max()-num_levels, apr.level_min()+1), apr.level_max());
 
@@ -82,27 +82,16 @@ void get_terminal_energies(PyAPR& apr, PyParticleData<uint16_t>& input_parts, Py
 }
 
 
-template<typename T>
-void segment_apr_py(PyAPR& apr, PyParticleData<T>& input_parts, PyParticleData<uint16_t>& mask_parts,
-                    float alpha, float beta, float avg_num_neighbours, int num_tree_smooth = 1,
-                    int num_part_smooth = 1, int push_depth = 0, float intensity_threshold=0.0f,
-                    float min_var = 0.0f, int std_window_size=7, float max_factor=3.0, int num_levels=3) {
-
-    segment_apr_cpp(apr.apr, input_parts.parts, mask_parts.parts, alpha, beta, avg_num_neighbours, num_tree_smooth,
-                    num_part_smooth, push_depth, intensity_threshold, min_var, std_window_size, max_factor, num_levels);
-}
-
-
 void err_fn(const char * msg) {
     std::cerr << msg << std::endl;
 }
 
 
 template<typename T>
-void segment_apr_cpp(APR& apr, ParticleData<T>& input_parts, ParticleData<uint16_t>& mask_parts,
-                     float alpha, float beta, float avg_num_neighbours, int num_tree_smooth = 1,
-                     int num_part_smooth = 1, int push_depth = 0, float intensity_threshold=0.0f,
-                     float min_var = 0.0f, int std_window_size=7, float max_factor=3.0, int num_levels=3) {
+void segment_apr(APR& apr, PyParticleData<T>& input_parts, PyParticleData<uint16_t>& mask_parts,
+                 float alpha, float beta, float avg_num_neighbours, int num_tree_smooth = 1,
+                 int num_part_smooth = 1, int push_depth = 0, float intensity_threshold=0.0f,
+                 float min_var = 0.0f, int std_window_size=7, float max_factor=3.0, int num_levels=3) {
 
     APRTimer timer(true);
 
@@ -230,10 +219,10 @@ void segment_apr_cpp(APR& apr, ParticleData<T>& input_parts, ParticleData<uint16
 
 
 template<typename T>
-void segment_apr_py_tiled(PyAPR& apr, const PyParticleData<T>& input_parts, PyParticleData<uint16_t>& mask_parts,
-                          float alpha, float beta, float avg_num_neighbours, int z_block_size, int z_ghost_size,
-                          int num_tree_smooth=1, int num_part_smooth=1, int push_depth=0, float intensity_threshold=0.0f,
-                          float min_var = 0.0f, int std_window_size=7, float max_factor=3.0, int num_levels=3) {
+void segment_apr_tiled(APR& apr, const PyParticleData<T>& input_parts, PyParticleData<uint16_t>& mask_parts,
+                       float alpha, float beta, float avg_num_neighbours, int z_block_size, int z_ghost_size,
+                       int num_tree_smooth=1, int num_part_smooth=1, int push_depth=0, float intensity_threshold=0.0f,
+                       float min_var = 0.0f, int std_window_size=7, float max_factor=3.0, int num_levels=3) {
 
     APRTimer total_timer(true);
     total_timer.start_timer("Total time");
@@ -242,20 +231,20 @@ void segment_apr_py_tiled(PyAPR& apr, const PyParticleData<T>& input_parts, PyPa
 
     timer.start_timer("compute adaptive min");
     ParticleData<float> loc_min;
-    APRNumerics::adaptive_min(apr.apr, input_parts.parts, loc_min, num_tree_smooth, push_depth, num_part_smooth);
+    APRNumerics::adaptive_min(apr, input_parts, loc_min, num_tree_smooth, push_depth, num_part_smooth);
     timer.stop_timer();
 
     timer.start_timer("compute local scale");
     ParticleData<float> local_scale;
     std::vector<int> window_size = {std_window_size, std_window_size, std_window_size};
-    APRNumerics::local_std(apr.apr, input_parts.parts, local_scale, window_size);
+    APRNumerics::local_std(apr, input_parts, local_scale, window_size);
     timer.stop_timer();
 
-    mask_parts.parts.init(apr.total_number_particles()); // initialize output particles
+    mask_parts.init(apr.total_number_particles()); // initialize output particles
 
-    const int y_num = apr.apr.org_dims(0);
-    const int x_num = apr.apr.org_dims(1);
-    const int z_num = apr.apr.org_dims(2);
+    const int y_num = apr.org_dims(0);
+    const int x_num = apr.org_dims(1);
+    const int z_num = apr.org_dims(2);
 
     const int number_z_blocks = (z_num + z_block_size - 1) / z_block_size;
 
@@ -275,7 +264,7 @@ void segment_apr_py_tiled(PyAPR& apr, const PyParticleData<T>& input_parts, PyPa
         patch.z_ghost_r = z_ghost_r;
         patch.z_offset = z_0 - z_ghost_l;
 
-        segment_apr_block(apr.apr, input_parts.parts, mask_parts.parts, alpha, beta, avg_num_neighbours,
+        segment_apr_block(apr, input_parts, mask_parts, alpha, beta, avg_num_neighbours,
                           patch, loc_min, local_scale, intensity_threshold, min_var, max_factor, num_levels);
         timer.stop_timer();
     }
@@ -340,7 +329,7 @@ void compute_offset_per_level(APR& apr, std::vector<uint64_t>& offsets, const in
 
 
 template<typename T>
-void segment_apr_block(APR& apr, const ParticleData<T>& input_parts, ParticleData<uint16_t>& mask_parts,
+void segment_apr_block(APR& apr, const PyParticleData<T>& input_parts, PyParticleData<uint16_t>& mask_parts,
                        const float alpha, const float beta, float avg_num_neighbours, const ImagePatch& patch, const ParticleData<float>& loc_min,
                        const ParticleData<float>& local_scale, const float intensity_threshold, const float min_var, const float max_factor,
                        const int num_levels) {
@@ -486,32 +475,185 @@ void segment_apr_block(APR& apr, const ParticleData<T>& input_parts, ParticleDat
 }
 
 
+/// -----------------------------------------
+/// APR connected component
+/// -----------------------------------------
+
+/* Find the equivalence class corresponding to a given label */
+inline int uf_find(int x, std::vector<int>& labels) {
+    while (x != labels[x]) {
+        x = labels[x];
+    }
+    return x;
+}
+
+
+/* Merge each step from x to target. Assumes labels[target] = target */
+inline void uf_merge_path(int x, int target, std::vector<int>& labels) {
+    while(x != target) {
+        int tmp = x;
+        x = labels[x];
+        labels[tmp] = target;
+    }
+}
+
+
+/* Join two equivalence classes and return the minimum label */
+inline int uf_union(int x, int y, std::vector<int>& labels) {
+    const int orig_x = x;
+    const int orig_y = y;
+
+    // find mininum label
+    int lx = uf_find(x, labels);
+    int ly = uf_find(y, labels);
+    const int minlabel = std::min(lx, ly);
+
+    // merge roots
+    labels[ly] = minlabel;
+    labels[lx] = minlabel;
+
+    // merge each step to minlevel
+    uf_merge_path(orig_x, minlabel, labels);
+    uf_merge_path(orig_y, minlabel, labels);
+
+    return minlabel;
+}
+
+
+/*  Create a new equivalence class and returns its label */
+inline int uf_make_set(std::vector<int>& labels) {
+    labels[0]++;
+    labels.push_back(labels[0]);
+    return labels[0];
+}
+
+
+/**
+ * Compute connected component labels from a binary mask, using face-side connectivity. That is, two segments are
+ * considered connected if they share a common particle cell face. Diagonal neighbours are not considered connected.
+ * @param apr
+ * @param binary_mask
+ * @param component_labels
+ */
+void calc_connected_component(APR& apr, PyParticleData<uint16_t>& binary_mask, PyParticleData<uint16_t>& component_labels) {
+
+    component_labels.init(apr);
+
+    APRTimer timer(false);
+
+    auto apr_it = apr.random_iterator();
+    auto neigh_it = apr.random_iterator();
+
+    std::vector<int> labels;
+    labels.resize(1, 0);
+
+    timer.start_timer("connected component first loop");
+
+    // iterate over particles
+    for(int level = apr_it.level_min(); level <= apr_it.level_max(); ++level) {
+        for(int z = 0; z < apr_it.z_num(level); ++z) {
+            for(int x = 0; x < apr_it.x_num(level); ++x) {
+                for(apr_it.begin(level, z, x); apr_it < apr_it.end(); ++apr_it) {
+
+                    if(binary_mask[apr_it] > 0) {
+
+                        std::vector<int> neigh_labels;
+
+                        // iterate over face-side neighbours in y, x, z directions
+                        // Neighbour Particle Cell Face definitions [+y,-y,+x,-x,+z,-z] =  [0,1,2,3,4,5]
+                        for (int direction = 0; direction < 6; direction++) {
+                            apr_it.find_neighbours_in_direction(direction);
+
+                            // For each face, there can be 0-4 neighbours
+                            for (int index = 0; index < apr_it.number_neighbours_in_direction(direction); ++index) {
+                                if (neigh_it.set_neighbour_iterator(apr_it, direction, index)) {
+
+                                    if (component_labels[neigh_it] > 0) {
+                                        neigh_labels.push_back(component_labels[neigh_it]);
+                                    }
+                                }
+                            }
+                        }
+
+                        if(neigh_labels.size() == 0) {
+                            // no neighbour labels, make new region
+                            component_labels[apr_it] = uf_make_set(labels);
+
+                        } else if (neigh_labels.size() == 1){
+                            // one neighbour label, set mask to that label
+                            component_labels[apr_it] = neigh_labels[0];
+
+                        } else {
+                            // multiple neighbour regions, resolve
+                            int curr_label = neigh_labels[0];
+                            for(int n = 0; n < ((int)neigh_labels.size()-1); ++n){
+                                curr_label = uf_union(curr_label, neigh_labels[n+1], labels);
+                            }
+
+                            component_labels[apr_it] = curr_label;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    timer.stop_timer();
+
+    std::vector<int> new_labels;
+    new_labels.resize(labels.size(), 0);
+
+    timer.start_timer("connected component second loop");
+
+    // iterate over particles
+    for(size_t idx = 0; idx < apr_it.total_number_particles(); ++idx) {
+
+        if(component_labels[idx] > 0){
+
+            int curr_label = uf_find(component_labels[idx], labels);
+            if(new_labels[curr_label] == 0) {
+                new_labels[curr_label] = (++new_labels[0]);
+            }
+
+            component_labels[idx] = new_labels[curr_label];
+        }
+    }
+
+    timer.stop_timer();
+}
+
+
+
 void AddPyAPRSegmentation(py::module &m, const std::string &modulename) {
 
     auto m2 = m.def_submodule(modulename.c_str());
-    m2.def("graphcut", &segment_apr_py<float>, "compute graphcut segmentation of an APR",
+    m2.def("graphcut", &segment_apr<float>, "compute graphcut segmentation of an APR",
            py::arg("apr"), py::arg("input_parts"), py::arg("mask_parts"), py::arg("alpha")=1, py::arg("beta")=1,
            py::arg("avg_num_neighbours")=3.3, py::arg("num_tree_smooth")=1, py::arg("num_part_smooth")=1,
            py::arg("push_depth")=0, py::arg("intensity_threshold")=0.0f, py::arg("min_var")=0.0f,
            py::arg("std_window_size")=7, py::arg("max_factor")=3.0, py::arg("num_levels")=2);
-    m2.def("graphcut", &segment_apr_py<uint16_t>, "compute graphcut segmentation of an APR",
+    m2.def("graphcut", &segment_apr<uint16_t>, "compute graphcut segmentation of an APR",
            py::arg("apr"), py::arg("input_parts"), py::arg("mask_parts"), py::arg("alpha")=1, py::arg("beta")=1,
            py::arg("avg_num_neighbours")=3.3, py::arg("num_tree_smooth")=1, py::arg("num_part_smooth")=1,
            py::arg("push_depth")=0, py::arg("intensity_threshold")=0.0f, py::arg("min_var")=0.0f,
            py::arg("std_window_size")=7, py::arg("max_factor")=3.0, py::arg("num_levels")=2);
 
-    m2.def("graphcut_tiled", &segment_apr_py_tiled<uint16_t>, "compute graphcut segmentation of an APR",
+    m2.def("graphcut_tiled", &segment_apr_tiled<uint16_t>, "compute graphcut segmentation of an APR",
            py::arg("apr"), py::arg("input_parts"), py::arg("mask_parts"), py::arg("alpha")=1.0, py::arg("beta")=1.0,
            py::arg("avg_num_neighbours")=3.3, py::arg("z_block_size")=256, py::arg("z_ghost_size")=16,
            py::arg("num_tree_smooth")=1, py::arg("num_part_smooth")=1, py::arg("push_depth")=0, py::arg("intensity_threshold")=0.0f,
            py::arg("min_var")=0.0f, py::arg("std_window_size")=5, py::arg("max_factor")=3.0, py::arg("num_levels")=2);
-    m2.def("graphcut_tiled", &segment_apr_py_tiled<uint16_t>, "compute graphcut segmentation of an APR",
+    m2.def("graphcut_tiled", &segment_apr_tiled<uint16_t>, "compute graphcut segmentation of an APR",
            py::arg("apr"), py::arg("input_parts"), py::arg("mask_parts"), py::arg("alpha")=1, py::arg("beta")=1,
            py::arg("avg_num_neighbours")=3.3, py::arg("z_block_size")=256, py::arg("z_ghost_size")=16,
            py::arg("num_tree_smooth")=1, py::arg("num_part_smooth")=1, py::arg("push_depth")=0, py::arg("intensity_threshold")=0.0f,
            py::arg("min_var")=0.0f, py::arg("std_window_size")=5, py::arg("max_factor")=3.0, py::arg("num_levels")=2);
 
     m2.def("get_terminal_energies", &get_terminal_energies, "Compute terminal edges (useful for debugging or fine-tuning)");
+
+    m2.def("connected_component", &calc_connected_component, "Compute connected components from a binary particle mask",
+           py::arg("apr"), py::arg("binary_mask"), py::arg("component_labels"));
+
 }
 
 #endif //PYLIBAPR_PYAPRSEGMENTATION_HPP

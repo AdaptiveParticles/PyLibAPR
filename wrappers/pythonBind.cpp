@@ -7,15 +7,16 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 
-#include "ConfigAPR.h"
-#include "data_structures/APR/APR.hpp"
+#include <ConfigAPR.h>
 
 #include "data_containers/PyPixelData.hpp"
 #include "data_containers/PyAPR.hpp"
 #include "data_containers/PyAPRParameters.hpp"
 #include "data_containers/PyParticleData.hpp"
+#include "data_containers/ReconPatch.hpp"
 #include "data_containers/iterators/PyLinearIterator.hpp"
 #include "numerics/PyAPRNumerics.hpp"
+#include "numerics/PyAPRTreeNumerics.hpp"
 #include "numerics/reconstruction/PyAPRReconstruction.hpp"
 #include "numerics/filter/PyAPRFilter.hpp"
 #include "numerics/segmentation/PyAPRSegmentation.hpp"
@@ -56,12 +57,15 @@ PYBIND11_MODULE(APR_PYTHON_MODULE_NAME, m) {
     AddPyParticleData<float>(data_containers, "Float");
     AddPyParticleData<uint16_t>(data_containers, "Short");
 
+    AddReconPatch(data_containers);
+
     // wrap PyLinearIterator
     AddPyLinearIterator(data_containers, "iterators");
 
     // wrap numerics module and submodules
     py::module numerics = m.def_submodule("numerics");
     AddPyAPRNumerics(numerics, "aprnumerics");
+    AddPyAPRTreeNumerics(numerics, "treenumerics");
     AddPyAPRReconstruction(numerics, "reconstruction");
     AddPyAPRFilter(numerics, "filter");
     AddPyAPRSegmentation(numerics, "segmentation");

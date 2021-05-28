@@ -40,7 +40,7 @@ void get_ds_stencil_vec(py::buffer_info& stencil_buf, std::vector<PixelData<T>>&
 
 
 template<typename inputType, typename stencilType>
-void convolve(PyAPR& apr, const PyParticleData<inputType>& input_parts, PyParticleData<stencilType>& output_parts,
+void convolve(APR& apr, const PyParticleData<inputType>& input_parts, PyParticleData<stencilType>& output_parts,
               py::array_t<stencilType>& stencil, bool use_stencil_downsample, bool normalize_stencil, bool use_reflective_boundary) {
 
     auto stencil_buf = stencil.request();
@@ -48,12 +48,12 @@ void convolve(PyAPR& apr, const PyParticleData<inputType>& input_parts, PyPartic
     int nlevels = use_stencil_downsample ? apr.level_max() - apr.level_min() : 1;
     get_ds_stencil_vec(stencil_buf, stencil_vec, nlevels, normalize_stencil);
 
-    APRFilter::convolve(apr.apr, stencil_vec, input_parts.parts, output_parts.parts, use_reflective_boundary);
+    APRFilter::convolve(apr, stencil_vec, input_parts, output_parts, use_reflective_boundary);
 }
 
 
 template<typename inputType, typename stencilType>
-void convolve_pencil(PyAPR& apr, PyParticleData<inputType>& input_parts, PyParticleData<stencilType>& output_parts,
+void convolve_pencil(APR& apr, PyParticleData<inputType>& input_parts, PyParticleData<stencilType>& output_parts,
                      py::array_t<stencilType>& stencil, bool use_stencil_downsample, bool normalize_stencil, bool use_reflective_boundary) {
 
     auto stencil_buf = stencil.request();
@@ -61,14 +61,14 @@ void convolve_pencil(PyAPR& apr, PyParticleData<inputType>& input_parts, PyParti
     int nlevels = use_stencil_downsample ? apr.level_max() - apr.level_min() : 1;
     get_ds_stencil_vec(stencil_buf, stencil_vec, nlevels, normalize_stencil);
 
-    APRFilter::convolve_pencil(apr.apr, stencil_vec, input_parts.parts, output_parts.parts, use_reflective_boundary);
+    APRFilter::convolve_pencil(apr, stencil_vec, input_parts, output_parts, use_reflective_boundary);
 }
 
 
 #ifdef PYAPR_USE_CUDA
 
 template<typename inputType, typename stencilType>
-void convolve_cuda(PyAPR& apr, PyParticleData<inputType>& input_parts, PyParticleData<stencilType>& output_parts,
+void convolve_cuda(APR& apr, PyParticleData<inputType>& input_parts, PyParticleData<stencilType>& output_parts,
                    py::array_t<stencilType>& stencil, bool use_stencil_downsample, bool normalize_stencil, bool use_reflective_boundary) {
 
     auto stencil_buf = stencil.request();
@@ -91,14 +91,14 @@ void convolve_cuda(PyAPR& apr, PyParticleData<inputType>& input_parts, PyParticl
     std::copy(stencil_ptr, stencil_ptr+num_stencil_elements, stencil_vec.begin());
 
     VectorData<stencilType> tree_data;
-    auto access = apr.apr.gpuAPRHelper();
-    auto tree_access = apr.apr.gpuTreeHelper();
+    auto access = apr.gpuAPRHelper();
+    auto tree_access = apr.gpuTreeHelper();
 
     if(stencil_size == 3) {
-        isotropic_convolve_333(access, tree_access, input_parts.parts.data, output_parts.parts.data, stencil_vec,
+        isotropic_convolve_333(access, tree_access, input_parts.data, output_parts.data, stencil_vec,
                                tree_data, use_reflective_boundary, use_stencil_downsample, normalize_stencil);
     } else {
-        isotropic_convolve_555(access, tree_access, input_parts.parts.data, output_parts.parts.data, stencil_vec,
+        isotropic_convolve_555(access, tree_access, input_parts.data, output_parts.data, stencil_vec,
                                tree_data, use_reflective_boundary, use_stencil_downsample, normalize_stencil);
     }
 }
