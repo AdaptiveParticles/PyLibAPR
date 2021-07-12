@@ -67,18 +67,29 @@ def bottomhat(apr: pyapr.APR,
 
 
 def remove_small_holes(apr: pyapr.APR,
-                       parts: (pyapr.ShortParticles, pyapr.FloatParticles),
-                       min_volume: int = 200):
+                       parts: (pyapr.ShortParticles, pyapr.LongParticles),
+                       max_volume: int = 200):
 
-    mask = parts < 1
-    cc_inverted = pyapr.ShortParticles()
+    if isinstance(parts, pyapr.ShortParticles):
+        mask = parts < 1
+        cc_inverted = pyapr.ShortParticles()
+    elif isinstance(parts, pyapr.LongParticles):
+        mask = parts < 1
+        mask = np.array(mask).astype('uint16')
+        mask = pyapr.ShortParticles(mask)
+        cc_inverted = pyapr.LongParticles()
     pyapr.numerics.segmentation.connected_component(apr, mask, cc_inverted)
-    pyapr.numerics.transform.remove_small_objects(apr, cc_inverted, min_volume=min_volume)
+    pyapr.numerics.transform.remove_small_objects(apr, cc_inverted, min_volume=max_volume)
     mask = cc_inverted < 1
 
     if parts.max() > 1:
         # Case where input is a label map
-        cc = pyapr.ShortParticles()
+        if isinstance(parts, pyapr.ShortParticles):
+            cc = pyapr.ShortParticles()
+        elif isinstance(parts, pyapr.LongParticles):
+            mask = np.array(mask).astype('uint16')
+            mask = pyapr.ShortParticles(mask)
+            cc = pyapr.LongParticles()
         pyapr.numerics.segmentation.connected_component(apr, mask, cc)
         return cc
     else:
